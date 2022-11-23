@@ -1,5 +1,5 @@
 -sname arbeitsinspektor
-
+-enable-features maybe_expr 
 -setcookie arbeitsinspektor_cookie
 
 +K true
