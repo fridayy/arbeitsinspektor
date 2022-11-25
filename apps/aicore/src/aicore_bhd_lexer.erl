@@ -8,16 +8,17 @@
 
 -module(aicore_bhd_lexer).
 
--export([string/1, string/2, token/2, token/3, tokens/2, tokens/3]).
+-export([string/1,string/2,token/2,token/3,tokens/2,tokens/3]).
 -export([format_error/1]).
 
 %% User code. This is placed here to allow extra attributes.
 -file("/home/bnjm/dev/erlang/arbeitsinspektor/apps/aicore/src/aicore_bhd_lexer.xrl", 18).
 
+
 -file("/usr/lib/erlang/lib/parsetools-2.4.1/include/leexinc.hrl", 14).
 
-format_error({illegal, S}) -> ["illegal characters ", io_lib:write_string(S)];
-format_error({user, S}) -> S.
+format_error({illegal,S}) -> ["illegal characters ",io_lib:write_string(S)];
+format_error({user,S}) -> S.
 
 string(String) -> string(String, 1).
 
@@ -29,21 +30,17 @@ string(String, Line) -> string(String, Line, String, []).
 %% start while line number returned is line of token end. We want line
 %% of token start.
 
-% No partial tokens!
-string([], L, [], Ts) ->
-    {ok, yyrev(Ts), L};
+string([], L, [], Ts) ->                     % No partial tokens!
+    {ok,yyrev(Ts),L};
 string(Ics0, L0, Tcs, Ts) ->
     case yystate(yystate(), Ics0, L0, 0, reject, 0) of
-        % Accepting end state
-        {A, Alen, Ics1, L1} ->
+        {A,Alen,Ics1,L1} ->                  % Accepting end state
             string_cont(Ics1, L1, yyaction(A, Alen, Tcs, L0), Ts);
-        % Accepting transition state
-        {A, Alen, Ics1, L1, _S1} ->
+        {A,Alen,Ics1,L1,_S1} ->              % Accepting transition state
             string_cont(Ics1, L1, yyaction(A, Alen, Tcs, L0), Ts);
-        % After a non-accepting state
-        {reject, _Alen, Tlen, _Ics1, L1, _S1} ->
-            {error, {L0, ?MODULE, {illegal, yypre(Tcs, Tlen + 1)}}, L1};
-        {A, Alen, Tlen, _Ics1, L1, _S1} ->
+        {reject,_Alen,Tlen,_Ics1,L1,_S1} ->  % After a non-accepting state
+            {error,{L0,?MODULE,{illegal,yypre(Tcs, Tlen+1)}},L1};
+        {A,Alen,Tlen,_Ics1,L1,_S1} ->
             Tcs1 = yysuf(Tcs, Alen),
             L2 = adjust_line(Tlen, Alen, Tcs1, L1),
             string_cont(Tcs1, L2, yyaction(A, Alen, Tcs, L0), Ts)
@@ -55,23 +52,23 @@ string(Ics0, L0, Tcs, Ts) ->
 
 -dialyzer({nowarn_function, string_cont/4}).
 
-string_cont(Rest, Line, {token, T}, Ts) ->
-    string(Rest, Line, Rest, [T | Ts]);
-string_cont(Rest, Line, {token, T, Push}, Ts) ->
+string_cont(Rest, Line, {token,T}, Ts) ->
+    string(Rest, Line, Rest, [T|Ts]);
+string_cont(Rest, Line, {token,T,Push}, Ts) ->
     NewRest = Push ++ Rest,
-    string(NewRest, Line, NewRest, [T | Ts]);
-string_cont(Rest, Line, {end_token, T}, Ts) ->
-    string(Rest, Line, Rest, [T | Ts]);
-string_cont(Rest, Line, {end_token, T, Push}, Ts) ->
+    string(NewRest, Line, NewRest, [T|Ts]);
+string_cont(Rest, Line, {end_token,T}, Ts) ->
+    string(Rest, Line, Rest, [T|Ts]);
+string_cont(Rest, Line, {end_token,T,Push}, Ts) ->
     NewRest = Push ++ Rest,
-    string(NewRest, Line, NewRest, [T | Ts]);
+    string(NewRest, Line, NewRest, [T|Ts]);
 string_cont(Rest, Line, skip_token, Ts) ->
     string(Rest, Line, Rest, Ts);
-string_cont(Rest, Line, {skip_token, Push}, Ts) ->
+string_cont(Rest, Line, {skip_token,Push}, Ts) ->
     NewRest = Push ++ Rest,
     string(NewRest, Line, NewRest, Ts);
-string_cont(_Rest, Line, {error, S}, _Ts) ->
-    {error, {Line, ?MODULE, {user, S}}, Line}.
+string_cont(_Rest, Line, {error,S}, _Ts) ->
+    {error,{Line,?MODULE,{user,S}},Line}.
 
 %% token(Continuation, Chars) ->
 %% token(Continuation, Chars, Line) ->
@@ -84,7 +81,7 @@ token(Cont, Chars) -> token(Cont, Chars, 1).
 
 token([], Chars, Line) ->
     token(yystate(), Chars, Line, Chars, 0, Line, reject, 0);
-token({token, State, Line, Tcs, Tlen, Tline, Action, Alen}, Chars, _) ->
+token({token,State,Line,Tcs,Tlen,Tline,Action,Alen}, Chars, _) ->
     token(State, Chars, Line, Tcs ++ Chars, Tlen, Tline, Action, Alen).
 
 %% token(State, InChars, Line, TokenChars, TokenLen, TokenLine,
@@ -95,42 +92,28 @@ token({token, State, Line, Tcs, Tlen, Tline, Action, Alen}, Chars, _) ->
 token(S0, Ics0, L0, Tcs, Tlen0, Tline, A0, Alen0) ->
     case yystate(S0, Ics0, L0, Tlen0, A0, Alen0) of
         %% Accepting end state, we have a token.
-        {A1, Alen1, Ics1, L1} ->
+        {A1,Alen1,Ics1,L1} ->
             token_cont(Ics1, L1, yyaction(A1, Alen1, Tcs, Tline));
         %% Accepting transition state, can take more chars.
-
-        % Need more chars to check
-        {A1, Alen1, [], L1, S1} ->
-            {more, {token, S1, L1, Tcs, Alen1, Tline, A1, Alen1}};
-        % Take what we got
-        {A1, Alen1, Ics1, L1, _S1} ->
+        {A1,Alen1,[],L1,S1} ->                  % Need more chars to check
+            {more,{token,S1,L1,Tcs,Alen1,Tline,A1,Alen1}};
+        {A1,Alen1,Ics1,L1,_S1} ->               % Take what we got
             token_cont(Ics1, L1, yyaction(A1, Alen1, Tcs, Tline));
         %% After a non-accepting state, maybe reach accept state later.
-
-        % Need more chars to check
-        {A1, Alen1, Tlen1, [], L1, S1} ->
-            {more, {token, S1, L1, Tcs, Tlen1, Tline, A1, Alen1}};
-        % No token match
-        {reject, _Alen1, Tlen1, eof, L1, _S1} ->
+        {A1,Alen1,Tlen1,[],L1,S1} ->            % Need more chars to check
+            {more,{token,S1,L1,Tcs,Tlen1,Tline,A1,Alen1}};
+        {reject,_Alen1,Tlen1,eof,L1,_S1} ->     % No token match
             %% Check for partial token which is error.
-            Ret =
-                if
-                    Tlen1 > 0 ->
-                        {error,
-                            {Tline, ?MODULE,
-                                %% Skip eof tail in Tcs.
-                                {illegal, yypre(Tcs, Tlen1)}},
-                            L1};
-                    true ->
-                        {eof, L1}
-                end,
-            {done, Ret, eof};
-        % No token match
-        {reject, _Alen1, Tlen1, Ics1, L1, _S1} ->
-            Error = {Tline, ?MODULE, {illegal, yypre(Tcs, Tlen1 + 1)}},
-            {done, {error, Error, L1}, Ics1};
-        % Use last accept match
-        {A1, Alen1, Tlen1, _Ics1, L1, _S1} ->
+            Ret = if Tlen1 > 0 -> {error,{Tline,?MODULE,
+                                          %% Skip eof tail in Tcs.
+                                          {illegal,yypre(Tcs, Tlen1)}},L1};
+                     true -> {eof,L1}
+                  end,
+            {done,Ret,eof};
+        {reject,_Alen1,Tlen1,Ics1,L1,_S1} ->    % No token match
+            Error = {Tline,?MODULE,{illegal,yypre(Tcs, Tlen1+1)}},
+            {done,{error,Error,L1},Ics1};
+        {A1,Alen1,Tlen1,_Ics1,L1,_S1} ->       % Use last accept match
             Tcs1 = yysuf(Tcs, Alen1),
             L2 = adjust_line(Tlen1, Alen1, Tcs1, L1),
             token_cont(Tcs1, L2, yyaction(A1, Alen1, Tcs, Tline))
@@ -142,23 +125,23 @@ token(S0, Ics0, L0, Tcs, Tlen0, Tline, A0, Alen0) ->
 
 -dialyzer({nowarn_function, token_cont/3}).
 
-token_cont(Rest, Line, {token, T}) ->
-    {done, {ok, T, Line}, Rest};
-token_cont(Rest, Line, {token, T, Push}) ->
+token_cont(Rest, Line, {token,T}) ->
+    {done,{ok,T,Line},Rest};
+token_cont(Rest, Line, {token,T,Push}) ->
     NewRest = Push ++ Rest,
-    {done, {ok, T, Line}, NewRest};
-token_cont(Rest, Line, {end_token, T}) ->
-    {done, {ok, T, Line}, Rest};
-token_cont(Rest, Line, {end_token, T, Push}) ->
+    {done,{ok,T,Line},NewRest};
+token_cont(Rest, Line, {end_token,T}) ->
+    {done,{ok,T,Line},Rest};
+token_cont(Rest, Line, {end_token,T,Push}) ->
     NewRest = Push ++ Rest,
-    {done, {ok, T, Line}, NewRest};
+    {done,{ok,T,Line},NewRest};
 token_cont(Rest, Line, skip_token) ->
     token(yystate(), Rest, Line, Rest, 0, Line, reject, 0);
-token_cont(Rest, Line, {skip_token, Push}) ->
+token_cont(Rest, Line, {skip_token,Push}) ->
     NewRest = Push ++ Rest,
     token(yystate(), NewRest, Line, NewRest, 0, Line, reject, 0);
-token_cont(Rest, Line, {error, S}) ->
-    {done, {error, {Line, ?MODULE, {user, S}}, Line}, Rest}.
+token_cont(Rest, Line, {error,S}) ->
+    {done,{error,{Line,?MODULE,{user,S}},Line},Rest}.
 
 %% tokens(Continuation, Chars, Line) ->
 %% {more,Continuation} | {done,ReturnVal,RestChars}.
@@ -171,9 +154,9 @@ tokens(Cont, Chars) -> tokens(Cont, Chars, 1).
 
 tokens([], Chars, Line) ->
     tokens(yystate(), Chars, Line, Chars, 0, Line, [], reject, 0);
-tokens({tokens, State, Line, Tcs, Tlen, Tline, Ts, Action, Alen}, Chars, _) ->
+tokens({tokens,State,Line,Tcs,Tlen,Tline,Ts,Action,Alen}, Chars, _) ->
     tokens(State, Chars, Line, Tcs ++ Chars, Tlen, Tline, Ts, Action, Alen);
-tokens({skip_tokens, State, Line, Tcs, Tlen, Tline, Error, Action, Alen}, Chars, _) ->
+tokens({skip_tokens,State,Line,Tcs,Tlen,Tline,Error,Action,Alen}, Chars, _) ->
     skip_tokens(State, Chars, Line, Tcs ++ Chars, Tlen, Tline, Error, Action, Alen).
 
 %% tokens(State, InChars, Line, TokenChars, TokenLen, TokenLine, Tokens,
@@ -183,43 +166,30 @@ tokens({skip_tokens, State, Line, Tcs, Tlen, Tline, Error, Action, Alen}, Chars,
 tokens(S0, Ics0, L0, Tcs, Tlen0, Tline, Ts, A0, Alen0) ->
     case yystate(S0, Ics0, L0, Tlen0, A0, Alen0) of
         %% Accepting end state, we have a token.
-        {A1, Alen1, Ics1, L1} ->
+        {A1,Alen1,Ics1,L1} ->
             tokens_cont(Ics1, L1, yyaction(A1, Alen1, Tcs, Tline), Ts);
         %% Accepting transition state, can take more chars.
-
-        % Need more chars to check
-        {A1, Alen1, [], L1, S1} ->
-            {more, {tokens, S1, L1, Tcs, Alen1, Tline, Ts, A1, Alen1}};
-        % Take what we got
-        {A1, Alen1, Ics1, L1, _S1} ->
+        {A1,Alen1,[],L1,S1} ->                  % Need more chars to check
+            {more,{tokens,S1,L1,Tcs,Alen1,Tline,Ts,A1,Alen1}};
+        {A1,Alen1,Ics1,L1,_S1} ->               % Take what we got
             tokens_cont(Ics1, L1, yyaction(A1, Alen1, Tcs, Tline), Ts);
         %% After a non-accepting state, maybe reach accept state later.
-
-        % Need more chars to check
-        {A1, Alen1, Tlen1, [], L1, S1} ->
-            {more, {tokens, S1, L1, Tcs, Tlen1, Tline, Ts, A1, Alen1}};
-        % No token match
-        {reject, _Alen1, Tlen1, eof, L1, _S1} ->
+        {A1,Alen1,Tlen1,[],L1,S1} ->            % Need more chars to check
+            {more,{tokens,S1,L1,Tcs,Tlen1,Tline,Ts,A1,Alen1}};
+        {reject,_Alen1,Tlen1,eof,L1,_S1} ->     % No token match
             %% Check for partial token which is error, no need to skip here.
-            Ret =
-                if
-                    Tlen1 > 0 ->
-                        {error,
-                            {Tline, ?MODULE,
-                                %% Skip eof tail in Tcs.
-                                {illegal, yypre(Tcs, Tlen1)}},
-                            L1};
-                    Ts == [] ->
-                        {eof, L1};
-                    true ->
-                        {ok, yyrev(Ts), L1}
-                end,
-            {done, Ret, eof};
-        {reject, _Alen1, Tlen1, _Ics1, L1, _S1} ->
+            Ret = if Tlen1 > 0 -> {error,{Tline,?MODULE,
+                                          %% Skip eof tail in Tcs.
+                                          {illegal,yypre(Tcs, Tlen1)}},L1};
+                     Ts == [] -> {eof,L1};
+                     true -> {ok,yyrev(Ts),L1}
+                  end,
+            {done,Ret,eof};
+        {reject,_Alen1,Tlen1,_Ics1,L1,_S1} ->
             %% Skip rest of tokens.
-            Error = {L1, ?MODULE, {illegal, yypre(Tcs, Tlen1 + 1)}},
-            skip_tokens(yysuf(Tcs, Tlen1 + 1), L1, Error);
-        {A1, Alen1, Tlen1, _Ics1, L1, _S1} ->
+            Error = {L1,?MODULE,{illegal,yypre(Tcs, Tlen1+1)}},
+            skip_tokens(yysuf(Tcs, Tlen1+1), L1, Error);
+        {A1,Alen1,Tlen1,_Ics1,L1,_S1} ->
             Token = yyaction(A1, Alen1, Tcs, Tline),
             Tcs1 = yysuf(Tcs, Alen1),
             L2 = adjust_line(Tlen1, Alen1, Tcs1, L1),
@@ -233,23 +203,23 @@ tokens(S0, Ics0, L0, Tcs, Tlen0, Tline, Ts, A0, Alen0) ->
 
 -dialyzer({nowarn_function, tokens_cont/4}).
 
-tokens_cont(Rest, Line, {token, T}, Ts) ->
-    tokens(yystate(), Rest, Line, Rest, 0, Line, [T | Ts], reject, 0);
-tokens_cont(Rest, Line, {token, T, Push}, Ts) ->
+tokens_cont(Rest, Line, {token,T}, Ts) ->
+    tokens(yystate(), Rest, Line, Rest, 0, Line, [T|Ts], reject, 0);
+tokens_cont(Rest, Line, {token,T,Push}, Ts) ->
     NewRest = Push ++ Rest,
-    tokens(yystate(), NewRest, Line, NewRest, 0, Line, [T | Ts], reject, 0);
-tokens_cont(Rest, Line, {end_token, T}, Ts) ->
-    {done, {ok, yyrev(Ts, [T]), Line}, Rest};
-tokens_cont(Rest, Line, {end_token, T, Push}, Ts) ->
+    tokens(yystate(), NewRest, Line, NewRest, 0, Line, [T|Ts], reject, 0);
+tokens_cont(Rest, Line, {end_token,T}, Ts) ->
+    {done,{ok,yyrev(Ts, [T]),Line},Rest};
+tokens_cont(Rest, Line, {end_token,T,Push}, Ts) ->
     NewRest = Push ++ Rest,
-    {done, {ok, yyrev(Ts, [T]), Line}, NewRest};
+    {done,{ok,yyrev(Ts, [T]),Line},NewRest};
 tokens_cont(Rest, Line, skip_token, Ts) ->
     tokens(yystate(), Rest, Line, Rest, 0, Line, Ts, reject, 0);
-tokens_cont(Rest, Line, {skip_token, Push}, Ts) ->
+tokens_cont(Rest, Line, {skip_token,Push}, Ts) ->
     NewRest = Push ++ Rest,
     tokens(yystate(), NewRest, Line, NewRest, 0, Line, Ts, reject, 0);
-tokens_cont(Rest, Line, {error, S}, _Ts) ->
-    skip_tokens(Rest, Line, {Line, ?MODULE, {user, S}}).
+tokens_cont(Rest, Line, {error,S}, _Ts) ->
+    skip_tokens(Rest, Line, {Line,?MODULE,{user,S}}).
 
 %%skip_tokens(InChars, Line, Error) -> {done,{error,Error,Line},Ics}.
 %% Skip tokens until an end token, junk everything and return the error.
@@ -263,22 +233,19 @@ skip_tokens(Ics, Line, Error) ->
 
 skip_tokens(S0, Ics0, L0, Tcs, Tlen0, Tline, Error, A0, Alen0) ->
     case yystate(S0, Ics0, L0, Tlen0, A0, Alen0) of
-        % Accepting end state
-        {A1, Alen1, Ics1, L1} ->
+        {A1,Alen1,Ics1,L1} ->                  % Accepting end state
             skip_cont(Ics1, L1, yyaction(A1, Alen1, Tcs, Tline), Error);
-        % After an accepting state
-        {A1, Alen1, [], L1, S1} ->
-            {more, {skip_tokens, S1, L1, Tcs, Alen1, Tline, Error, A1, Alen1}};
-        {A1, Alen1, Ics1, L1, _S1} ->
+        {A1,Alen1,[],L1,S1} ->                 % After an accepting state
+            {more,{skip_tokens,S1,L1,Tcs,Alen1,Tline,Error,A1,Alen1}};
+        {A1,Alen1,Ics1,L1,_S1} ->
             skip_cont(Ics1, L1, yyaction(A1, Alen1, Tcs, Tline), Error);
-        % After a non-accepting state
-        {A1, Alen1, Tlen1, [], L1, S1} ->
-            {more, {skip_tokens, S1, L1, Tcs, Tlen1, Tline, Error, A1, Alen1}};
-        {reject, _Alen1, _Tlen1, eof, L1, _S1} ->
-            {done, {error, Error, L1}, eof};
-        {reject, _Alen1, Tlen1, _Ics1, L1, _S1} ->
-            skip_tokens(yysuf(Tcs, Tlen1 + 1), L1, Error);
-        {A1, Alen1, Tlen1, _Ics1, L1, _S1} ->
+        {A1,Alen1,Tlen1,[],L1,S1} ->           % After a non-accepting state
+            {more,{skip_tokens,S1,L1,Tcs,Tlen1,Tline,Error,A1,Alen1}};
+        {reject,_Alen1,_Tlen1,eof,L1,_S1} ->
+            {done,{error,Error,L1},eof};
+        {reject,_Alen1,Tlen1,_Ics1,L1,_S1} ->
+            skip_tokens(yysuf(Tcs, Tlen1+1), L1, Error);
+        {A1,Alen1,Tlen1,_Ics1,L1,_S1} ->
             Token = yyaction(A1, Alen1, Tcs, Tline),
             Tcs1 = yysuf(Tcs, Alen1),
             L2 = adjust_line(Tlen1, Alen1, Tcs1, L1),
@@ -291,22 +258,22 @@ skip_tokens(S0, Ics0, L0, Tcs, Tlen0, Tline, Error, A0, Alen0) ->
 
 -dialyzer({nowarn_function, skip_cont/4}).
 
-skip_cont(Rest, Line, {token, _T}, Error) ->
+skip_cont(Rest, Line, {token,_T}, Error) ->
     skip_tokens(yystate(), Rest, Line, Rest, 0, Line, Error, reject, 0);
-skip_cont(Rest, Line, {token, _T, Push}, Error) ->
+skip_cont(Rest, Line, {token,_T,Push}, Error) ->
     NewRest = Push ++ Rest,
     skip_tokens(yystate(), NewRest, Line, NewRest, 0, Line, Error, reject, 0);
-skip_cont(Rest, Line, {end_token, _T}, Error) ->
-    {done, {error, Error, Line}, Rest};
-skip_cont(Rest, Line, {end_token, _T, Push}, Error) ->
+skip_cont(Rest, Line, {end_token,_T}, Error) ->
+    {done,{error,Error,Line},Rest};
+skip_cont(Rest, Line, {end_token,_T,Push}, Error) ->
     NewRest = Push ++ Rest,
-    {done, {error, Error, Line}, NewRest};
+    {done,{error,Error,Line},NewRest};
 skip_cont(Rest, Line, skip_token, Error) ->
     skip_tokens(yystate(), Rest, Line, Rest, 0, Line, Error, reject, 0);
-skip_cont(Rest, Line, {skip_token, Push}, Error) ->
+skip_cont(Rest, Line, {skip_token,Push}, Error) ->
     NewRest = Push ++ Rest,
     skip_tokens(yystate(), NewRest, Line, NewRest, 0, Line, Error, reject, 0);
-skip_cont(Rest, Line, {error, _S}, Error) ->
+skip_cont(Rest, Line, {error,_S}, Error) ->
     skip_tokens(yystate(), Rest, Line, Rest, 0, Line, Error, reject, 0).
 
 -compile({nowarn_unused_function, [yyrev/1, yyrev/2, yypre/2, yysuf/2]}).
@@ -324,8 +291,10 @@ yysuf(List, N) -> lists:nthtail(N, List).
 -compile({nowarn_unused_function, adjust_line/4}).
 
 adjust_line(N, N, _Cs, L) -> L;
-adjust_line(T, A, [$\n | Cs], L) -> adjust_line(T - 1, A, Cs, L - 1);
-adjust_line(T, A, [_ | Cs], L) -> adjust_line(T - 1, A, Cs, L).
+adjust_line(T, A, [$\n|Cs], L) ->
+    adjust_line(T-1, A, Cs, L-1);
+adjust_line(T, A, [_|Cs], L) ->
+    adjust_line(T-1, A, Cs, L).
 
 %% yystate() -> InitialState.
 %% yystate(State, InChars, Line, CurrTokLen, AcceptAction, AcceptLen) ->
@@ -341,79 +310,79 @@ adjust_line(T, A, [_ | Cs], L) -> adjust_line(T - 1, A, Cs, L).
 yystate() -> 7.
 
 yystate(8, Ics, Line, Tlen, _, _) ->
-    {6, Tlen, Ics, Line};
-yystate(7, [124 | Ics], Line, Tlen, Action, Alen) ->
-    yystate(5, Ics, Line, Tlen + 1, Action, Alen);
-yystate(7, [119 | Ics], Line, Tlen, Action, Alen) ->
-    yystate(5, Ics, Line, Tlen + 1, Action, Alen);
-yystate(7, [104 | Ics], Line, Tlen, Action, Alen) ->
-    yystate(5, Ics, Line, Tlen + 1, Action, Alen);
-yystate(7, [105 | Ics], Line, Tlen, Action, Alen) ->
-    yystate(5, Ics, Line, Tlen + 1, Action, Alen);
-yystate(7, [97 | Ics], Line, Tlen, Action, Alen) ->
-    yystate(5, Ics, Line, Tlen + 1, Action, Alen);
-yystate(7, [93 | Ics], Line, Tlen, Action, Alen) ->
-    yystate(3, Ics, Line, Tlen + 1, Action, Alen);
-yystate(7, [91 | Ics], Line, Tlen, Action, Alen) ->
-    yystate(1, Ics, Line, Tlen + 1, Action, Alen);
-yystate(7, [58 | Ics], Line, Tlen, Action, Alen) ->
-    yystate(0, Ics, Line, Tlen + 1, Action, Alen);
-yystate(7, [45 | Ics], Line, Tlen, Action, Alen) ->
-    yystate(6, Ics, Line, Tlen + 1, Action, Alen);
-yystate(7, [32 | Ics], Line, Tlen, Action, Alen) ->
-    yystate(8, Ics, Line, Tlen + 1, Action, Alen);
-yystate(7, [13 | Ics], Line, Tlen, Action, Alen) ->
-    yystate(8, Ics, Line, Tlen + 1, Action, Alen);
-yystate(7, [9 | Ics], Line, Tlen, Action, Alen) ->
-    yystate(8, Ics, Line, Tlen + 1, Action, Alen);
-yystate(7, [10 | Ics], Line, Tlen, Action, Alen) ->
-    yystate(8, Ics, Line + 1, Tlen + 1, Action, Alen);
-yystate(7, [C | Ics], Line, Tlen, Action, Alen) when C >= 48, C =< 57 ->
-    yystate(2, Ics, Line, Tlen + 1, Action, Alen);
-yystate(7, [C | Ics], Line, Tlen, Action, Alen) when C >= 100, C =< 102 ->
-    yystate(5, Ics, Line, Tlen + 1, Action, Alen);
-yystate(7, [C | Ics], Line, Tlen, Action, Alen) when C >= 109, C =< 111 ->
-    yystate(5, Ics, Line, Tlen + 1, Action, Alen);
-yystate(7, [C | Ics], Line, Tlen, Action, Alen) when C >= 114, C =< 117 ->
-    yystate(5, Ics, Line, Tlen + 1, Action, Alen);
+    {6,Tlen,Ics,Line};
+yystate(7, [124|Ics], Line, Tlen, Action, Alen) ->
+    yystate(5, Ics, Line, Tlen+1, Action, Alen);
+yystate(7, [119|Ics], Line, Tlen, Action, Alen) ->
+    yystate(5, Ics, Line, Tlen+1, Action, Alen);
+yystate(7, [104|Ics], Line, Tlen, Action, Alen) ->
+    yystate(5, Ics, Line, Tlen+1, Action, Alen);
+yystate(7, [105|Ics], Line, Tlen, Action, Alen) ->
+    yystate(5, Ics, Line, Tlen+1, Action, Alen);
+yystate(7, [97|Ics], Line, Tlen, Action, Alen) ->
+    yystate(5, Ics, Line, Tlen+1, Action, Alen);
+yystate(7, [93|Ics], Line, Tlen, Action, Alen) ->
+    yystate(3, Ics, Line, Tlen+1, Action, Alen);
+yystate(7, [91|Ics], Line, Tlen, Action, Alen) ->
+    yystate(1, Ics, Line, Tlen+1, Action, Alen);
+yystate(7, [58|Ics], Line, Tlen, Action, Alen) ->
+    yystate(0, Ics, Line, Tlen+1, Action, Alen);
+yystate(7, [45|Ics], Line, Tlen, Action, Alen) ->
+    yystate(6, Ics, Line, Tlen+1, Action, Alen);
+yystate(7, [32|Ics], Line, Tlen, Action, Alen) ->
+    yystate(8, Ics, Line, Tlen+1, Action, Alen);
+yystate(7, [13|Ics], Line, Tlen, Action, Alen) ->
+    yystate(8, Ics, Line, Tlen+1, Action, Alen);
+yystate(7, [9|Ics], Line, Tlen, Action, Alen) ->
+    yystate(8, Ics, Line, Tlen+1, Action, Alen);
+yystate(7, [10|Ics], Line, Tlen, Action, Alen) ->
+    yystate(8, Ics, Line+1, Tlen+1, Action, Alen);
+yystate(7, [C|Ics], Line, Tlen, Action, Alen) when C >= 48, C =< 57 ->
+    yystate(2, Ics, Line, Tlen+1, Action, Alen);
+yystate(7, [C|Ics], Line, Tlen, Action, Alen) when C >= 100, C =< 102 ->
+    yystate(5, Ics, Line, Tlen+1, Action, Alen);
+yystate(7, [C|Ics], Line, Tlen, Action, Alen) when C >= 109, C =< 111 ->
+    yystate(5, Ics, Line, Tlen+1, Action, Alen);
+yystate(7, [C|Ics], Line, Tlen, Action, Alen) when C >= 114, C =< 117 ->
+    yystate(5, Ics, Line, Tlen+1, Action, Alen);
 yystate(7, Ics, Line, Tlen, Action, Alen) ->
-    {Action, Alen, Tlen, Ics, Line, 7};
-yystate(6, [45 | Ics], Line, Tlen, _, _) ->
-    yystate(6, Ics, Line, Tlen + 1, 1, Tlen);
+    {Action,Alen,Tlen,Ics,Line,7};
+yystate(6, [45|Ics], Line, Tlen, _, _) ->
+    yystate(6, Ics, Line, Tlen+1, 1, Tlen);
 yystate(6, Ics, Line, Tlen, _, _) ->
-    {1, Tlen, Ics, Line, 6};
-yystate(5, [124 | Ics], Line, Tlen, _, _) ->
-    yystate(5, Ics, Line, Tlen + 1, 0, Tlen);
-yystate(5, [119 | Ics], Line, Tlen, _, _) ->
-    yystate(5, Ics, Line, Tlen + 1, 0, Tlen);
-yystate(5, [104 | Ics], Line, Tlen, _, _) ->
-    yystate(5, Ics, Line, Tlen + 1, 0, Tlen);
-yystate(5, [105 | Ics], Line, Tlen, _, _) ->
-    yystate(5, Ics, Line, Tlen + 1, 0, Tlen);
-yystate(5, [97 | Ics], Line, Tlen, _, _) ->
-    yystate(5, Ics, Line, Tlen + 1, 0, Tlen);
-yystate(5, [C | Ics], Line, Tlen, _, _) when C >= 100, C =< 102 ->
-    yystate(5, Ics, Line, Tlen + 1, 0, Tlen);
-yystate(5, [C | Ics], Line, Tlen, _, _) when C >= 109, C =< 111 ->
-    yystate(5, Ics, Line, Tlen + 1, 0, Tlen);
-yystate(5, [C | Ics], Line, Tlen, _, _) when C >= 114, C =< 117 ->
-    yystate(5, Ics, Line, Tlen + 1, 0, Tlen);
+    {1,Tlen,Ics,Line,6};
+yystate(5, [124|Ics], Line, Tlen, _, _) ->
+    yystate(5, Ics, Line, Tlen+1, 0, Tlen);
+yystate(5, [119|Ics], Line, Tlen, _, _) ->
+    yystate(5, Ics, Line, Tlen+1, 0, Tlen);
+yystate(5, [104|Ics], Line, Tlen, _, _) ->
+    yystate(5, Ics, Line, Tlen+1, 0, Tlen);
+yystate(5, [105|Ics], Line, Tlen, _, _) ->
+    yystate(5, Ics, Line, Tlen+1, 0, Tlen);
+yystate(5, [97|Ics], Line, Tlen, _, _) ->
+    yystate(5, Ics, Line, Tlen+1, 0, Tlen);
+yystate(5, [C|Ics], Line, Tlen, _, _) when C >= 100, C =< 102 ->
+    yystate(5, Ics, Line, Tlen+1, 0, Tlen);
+yystate(5, [C|Ics], Line, Tlen, _, _) when C >= 109, C =< 111 ->
+    yystate(5, Ics, Line, Tlen+1, 0, Tlen);
+yystate(5, [C|Ics], Line, Tlen, _, _) when C >= 114, C =< 117 ->
+    yystate(5, Ics, Line, Tlen+1, 0, Tlen);
 yystate(5, Ics, Line, Tlen, _, _) ->
-    {0, Tlen, Ics, Line, 5};
+    {0,Tlen,Ics,Line,5};
 yystate(4, Ics, Line, Tlen, _, _) ->
-    {4, Tlen, Ics, Line};
+    {4,Tlen,Ics,Line};
 yystate(3, Ics, Line, Tlen, _, _) ->
-    {3, Tlen, Ics, Line};
-yystate(2, [C | Ics], Line, Tlen, Action, Alen) when C >= 48, C =< 57 ->
-    yystate(4, Ics, Line, Tlen + 1, Action, Alen);
+    {3,Tlen,Ics,Line};
+yystate(2, [C|Ics], Line, Tlen, Action, Alen) when C >= 48, C =< 57 ->
+    yystate(4, Ics, Line, Tlen+1, Action, Alen);
 yystate(2, Ics, Line, Tlen, Action, Alen) ->
-    {Action, Alen, Tlen, Ics, Line, 2};
+    {Action,Alen,Tlen,Ics,Line,2};
 yystate(1, Ics, Line, Tlen, _, _) ->
-    {2, Tlen, Ics, Line};
+    {2,Tlen,Ics,Line};
 yystate(0, Ics, Line, Tlen, _, _) ->
-    {5, Tlen, Ics, Line};
+    {5,Tlen,Ics,Line};
 yystate(S, Ics, Line, Tlen, Action, Alen) ->
-    {Action, Alen, Tlen, Ics, Line, S}.
+    {Action,Alen,Tlen,Ics,Line,S}.
 
 %% yyaction(Action, TokenLength, TokenChars, TokenLine) ->
 %% {token,Token} | {end_token, Token} | skip_token | {error,String}.
@@ -436,42 +405,41 @@ yyaction(5, TokenLen, YYtcs, TokenLine) ->
     yyaction_5(TokenChars, TokenLine);
 yyaction(6, _, _, _) ->
     yyaction_6();
-yyaction(_, _, _, _) ->
-    error.
+yyaction(_, _, _, _) -> error.
 
--compile({inline, yyaction_0/2}).
+-compile({inline,yyaction_0/2}).
 -file("/home/bnjm/dev/erlang/arbeitsinspektor/apps/aicore/src/aicore_bhd_lexer.xrl", 8).
 yyaction_0(TokenChars, TokenLine) ->
-    {token, {weekday, TokenLine, TokenChars}}.
+     { token, { weekday, TokenLine, TokenChars } } .
 
--compile({inline, yyaction_1/1}).
+-compile({inline,yyaction_1/1}).
 -file("/home/bnjm/dev/erlang/arbeitsinspektor/apps/aicore/src/aicore_bhd_lexer.xrl", 9).
 yyaction_1(TokenLine) ->
-    {token, {'-', TokenLine}}.
+     { token, { '-', TokenLine } } .
 
--compile({inline, yyaction_2/1}).
+-compile({inline,yyaction_2/1}).
 -file("/home/bnjm/dev/erlang/arbeitsinspektor/apps/aicore/src/aicore_bhd_lexer.xrl", 10).
 yyaction_2(TokenLine) ->
-    {token, {'[', TokenLine}}.
+     { token, { '[', TokenLine } } .
 
--compile({inline, yyaction_3/1}).
+-compile({inline,yyaction_3/1}).
 -file("/home/bnjm/dev/erlang/arbeitsinspektor/apps/aicore/src/aicore_bhd_lexer.xrl", 11).
 yyaction_3(TokenLine) ->
-    {token, {']', TokenLine}}.
+     { token, { ']', TokenLine } } .
 
--compile({inline, yyaction_4/2}).
+-compile({inline,yyaction_4/2}).
 -file("/home/bnjm/dev/erlang/arbeitsinspektor/apps/aicore/src/aicore_bhd_lexer.xrl", 12).
 yyaction_4(TokenChars, TokenLine) ->
-    {token, {time, TokenLine, TokenChars}}.
+     { token, { time, TokenLine, TokenChars } } .
 
--compile({inline, yyaction_5/2}).
+-compile({inline,yyaction_5/2}).
 -file("/home/bnjm/dev/erlang/arbeitsinspektor/apps/aicore/src/aicore_bhd_lexer.xrl", 13).
 yyaction_5(TokenChars, TokenLine) ->
-    {token, {time_delimiter, TokenLine, TokenChars}}.
+     { token, { time_delimiter, TokenLine, TokenChars } } .
 
--compile({inline, yyaction_6/0}).
+-compile({inline,yyaction_6/0}).
 -file("/home/bnjm/dev/erlang/arbeitsinspektor/apps/aicore/src/aicore_bhd_lexer.xrl", 14).
 yyaction_6() ->
-    skip_token.
+     skip_token .
 
 -file("/usr/lib/erlang/lib/parsetools-2.4.1/include/leexinc.hrl", 313).

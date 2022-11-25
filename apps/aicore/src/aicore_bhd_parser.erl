@@ -2,16 +2,16 @@
 -export([parse/1, parse_and_scan/1, format_error/1]).
 -file("/home/bnjm/dev/erlang/arbeitsinspektor/apps/aicore/src/aicore_bhd_parser.yrl", 17).
 value_of(Token) ->
-    element(3, Token).
+  element(3, Token).
 
 int_value_of(Token) ->
-    list_to_integer(value_of(Token)).
+  list_to_integer(value_of(Token)).
 
 day_value_of(Token) ->
-    to_day_of_week(value_of(Token)).
+  to_day_of_week(value_of(Token)).
 
 as_map(L) ->
-    maps:from_list(L).
+  maps:from_list(L).
 
 to_day_of_week("mon") -> 1;
 to_day_of_week("tue") -> 2;
@@ -51,10 +51,8 @@ to_day_of_week("sun") -> 7.
 parse(Tokens) ->
     yeccpars0(Tokens, {no_func, no_location}, 0, [], []).
 
--spec parse_and_scan(
-    {function() | {atom(), atom()}, [_]}
-    | {atom(), atom(), [_]}
-) -> yecc_ret().
+-spec parse_and_scan({function() | {atom(), atom()}, [_]}
+                     | {atom(), atom(), [_]}) -> yecc_ret().
 parse_and_scan({F, A}) ->
     yeccpars0([], {{F, A}, no_location}, 0, [], []);
 parse_and_scan({M, F, A}) ->
@@ -80,40 +78,34 @@ return_error(Location, Message) ->
 -define(CODE_VERSION, "1.4").
 
 yeccpars0(Tokens, Tzr, State, States, Vstack) ->
-    try
-        yeccpars1(Tokens, Tzr, State, States, Vstack)
-    catch
-        error:Error:Stacktrace ->
+    try yeccpars1(Tokens, Tzr, State, States, Vstack)
+    catch 
+        error: Error: Stacktrace ->
             try yecc_error_type(Error, Stacktrace) of
                 Desc ->
-                    erlang:raise(
-                        error,
-                        {yecc_bug, ?CODE_VERSION, Desc},
-                        Stacktrace
-                    )
-            catch
-                _:_ -> erlang:raise(error, Error, Stacktrace)
+                    erlang:raise(error, {yecc_bug, ?CODE_VERSION, Desc},
+                                 Stacktrace)
+            catch _:_ -> erlang:raise(error, Error, Stacktrace)
             end;
         %% Probably thrown from return_error/2:
-        throw:{error, {_Location, ?MODULE, _M}} = Error ->
+        throw: {error, {_Location, ?MODULE, _M}} = Error ->
             Error
     end.
 
-yecc_error_type(function_clause, [{?MODULE, F, ArityOrArgs, _} | _]) ->
+yecc_error_type(function_clause, [{?MODULE,F,ArityOrArgs,_} | _]) ->
     case atom_to_list(F) of
         "yeccgoto_" ++ SymbolL ->
-            {ok, [{atom, _, Symbol}], _} = erl_scan:string(SymbolL),
-            State =
-                case ArityOrArgs of
-                    [S, _, _, _, _, _, _] -> S;
-                    _ -> state_is_unknown
-                end,
+            {ok,[{atom,_,Symbol}],_} = erl_scan:string(SymbolL),
+            State = case ArityOrArgs of
+                        [S,_,_,_,_,_,_] -> S;
+                        _ -> state_is_unknown
+                    end,
             {Symbol, State, missing_in_goto_table}
     end.
 
 yeccpars1([Token | Tokens], Tzr, State, States, Vstack) ->
     yeccpars2(State, element(1, Token), States, Vstack, Token, Tokens, Tzr);
-yeccpars1([], {{F, A}, _Location}, State, States, Vstack) ->
+yeccpars1([], {{F, A},_Location}, State, States, Vstack) ->
     case apply(F, A) of
         {ok, Tokens, EndLocation} ->
             yeccpars1(Tokens, {{F, A}, EndLocation}, State, States, Vstack);
@@ -124,25 +116,11 @@ yeccpars1([], {{F, A}, _Location}, State, States, Vstack) ->
     end;
 yeccpars1([], {no_func, no_location}, State, States, Vstack) ->
     Line = 999999,
-    yeccpars2(
-        State,
-        '$end',
-        States,
-        Vstack,
-        yecc_end(Line),
-        [],
-        {no_func, Line}
-    );
+    yeccpars2(State, '$end', States, Vstack, yecc_end(Line), [],
+              {no_func, Line});
 yeccpars1([], {no_func, EndLocation}, State, States, Vstack) ->
-    yeccpars2(
-        State,
-        '$end',
-        States,
-        Vstack,
-        yecc_end(EndLocation),
-        [],
-        {no_func, EndLocation}
-    ).
+    yeccpars2(State, '$end', States, Vstack, yecc_end(EndLocation), [],
+              {no_func, EndLocation}).
 
 %% yeccpars1/7 is called from generated code.
 %%
@@ -151,38 +129,17 @@ yeccpars1([], {no_func, EndLocation}, State, States, Vstack) ->
 %% include directives. yecc will otherwise assume that an old
 %% yeccpre.hrl is included (one which defines yeccpars1/5).
 yeccpars1(State1, State, States, Vstack, Token0, [Token | Tokens], Tzr) ->
-    yeccpars2(
-        State,
-        element(1, Token),
-        [State1 | States],
-        [Token0 | Vstack],
-        Token,
-        Tokens,
-        Tzr
-    );
-yeccpars1(State1, State, States, Vstack, Token0, [], {{_F, _A}, _Location} = Tzr) ->
+    yeccpars2(State, element(1, Token), [State1 | States],
+              [Token0 | Vstack], Token, Tokens, Tzr);
+yeccpars1(State1, State, States, Vstack, Token0, [], {{_F,_A}, _Location}=Tzr) ->
     yeccpars1([], Tzr, State, [State1 | States], [Token0 | Vstack]);
 yeccpars1(State1, State, States, Vstack, Token0, [], {no_func, no_location}) ->
     Location = yecctoken_end_location(Token0),
-    yeccpars2(
-        State,
-        '$end',
-        [State1 | States],
-        [Token0 | Vstack],
-        yecc_end(Location),
-        [],
-        {no_func, Location}
-    );
+    yeccpars2(State, '$end', [State1 | States], [Token0 | Vstack],
+              yecc_end(Location), [], {no_func, Location});
 yeccpars1(State1, State, States, Vstack, Token0, [], {no_func, Location}) ->
-    yeccpars2(
-        State,
-        '$end',
-        [State1 | States],
-        [Token0 | Vstack],
-        yecc_end(Location),
-        [],
-        {no_func, Location}
-    ).
+    yeccpars2(State, '$end', [State1 | States], [Token0 | Vstack],
+              yecc_end(Location), [], {no_func, Location}).
 
 %% For internal use only.
 yecc_end(Location) ->
@@ -192,8 +149,7 @@ yecctoken_end_location(Token) ->
     try erl_anno:end_location(element(2, Token)) of
         undefined -> yecctoken_location(Token);
         Loc -> Loc
-    catch
-        _:_ -> yecctoken_location(Token)
+    catch _:_ -> yecctoken_location(Token)
     end.
 
 -compile({nowarn_unused_function, yeccerror/1}).
@@ -207,15 +163,12 @@ yecctoken_to_string(Token) ->
     try erl_scan:text(Token) of
         undefined -> yecctoken2string(Token);
         Txt -> Txt
-    catch
-        _:_ -> yecctoken2string(Token)
+    catch _:_ -> yecctoken2string(Token)
     end.
 
 yecctoken_location(Token) ->
-    try
-        erl_scan:location(Token)
-    catch
-        _:_ -> element(2, Token)
+    try erl_scan:location(Token)
+    catch _:_ -> element(2, Token)
     end.
 
 -compile({nowarn_unused_function, yecctoken2string/1}).
@@ -228,26 +181,16 @@ yecctoken2string(Token) ->
     end.
 
 -compile({nowarn_unused_function, yecctoken2string1/1}).
-yecctoken2string1({atom, _, A}) ->
-    io_lib:write_atom(A);
-yecctoken2string1({integer, _, N}) ->
-    io_lib:write(N);
-yecctoken2string1({float, _, F}) ->
-    io_lib:write(F);
-yecctoken2string1({char, _, C}) ->
-    io_lib:write_char(C);
-yecctoken2string1({var, _, V}) ->
-    io_lib:format("~s", [V]);
-yecctoken2string1({string, _, S}) ->
-    io_lib:write_string(S);
-yecctoken2string1({reserved_symbol, _, A}) ->
-    io_lib:write(A);
-yecctoken2string1({_Cat, _, Val}) ->
-    io_lib:format("~tp", [Val]);
-yecctoken2string1({dot, _}) ->
-    "'.'";
-yecctoken2string1({'$end', _}) ->
-    [];
+yecctoken2string1({atom, _, A}) -> io_lib:write_atom(A);
+yecctoken2string1({integer,_,N}) -> io_lib:write(N);
+yecctoken2string1({float,_,F}) -> io_lib:write(F);
+yecctoken2string1({char,_,C}) -> io_lib:write_char(C);
+yecctoken2string1({var,_,V}) -> io_lib:format("~s", [V]);
+yecctoken2string1({string,_,S}) -> io_lib:write_string(S);
+yecctoken2string1({reserved_symbol, _, A}) -> io_lib:write(A);
+yecctoken2string1({_Cat, _, Val}) -> io_lib:format("~tp", [Val]);
+yecctoken2string1({dot, _}) -> "'.'";
+yecctoken2string1({'$end', _}) -> [];
 yecctoken2string1({Other, _}) when is_atom(Other) ->
     io_lib:write_atom(Other);
 yecctoken2string1(Other) ->
@@ -255,12 +198,14 @@ yecctoken2string1(Other) ->
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+
+
 -file("/home/bnjm/dev/erlang/arbeitsinspektor/apps/aicore/src/aicore_bhd_parser.erl", 203).
 
 -dialyzer({nowarn_function, yeccpars2/7}).
--compile({nowarn_unused_function, yeccpars2/7}).
-yeccpars2(0 = S, Cat, Ss, Stack, T, Ts, Tzr) ->
-    yeccpars2_0(S, Cat, Ss, Stack, T, Ts, Tzr);
+-compile({nowarn_unused_function,  yeccpars2/7}).
+yeccpars2(0=S, Cat, Ss, Stack, T, Ts, Tzr) ->
+ yeccpars2_0(S, Cat, Ss, Stack, T, Ts, Tzr);
 %% yeccpars2(1=S, Cat, Ss, Stack, T, Ts, Tzr) ->
 %%  yeccpars2_1(S, Cat, Ss, Stack, T, Ts, Tzr);
 %% yeccpars2(2=S, Cat, Ss, Stack, T, Ts, Tzr) ->
@@ -269,240 +214,223 @@ yeccpars2(0 = S, Cat, Ss, Stack, T, Ts, Tzr) ->
 %%  yeccpars2_3(S, Cat, Ss, Stack, T, Ts, Tzr);
 %% yeccpars2(4=S, Cat, Ss, Stack, T, Ts, Tzr) ->
 %%  yeccpars2_4(S, Cat, Ss, Stack, T, Ts, Tzr);
-yeccpars2(5 = S, Cat, Ss, Stack, T, Ts, Tzr) ->
-    yeccpars2_5(S, Cat, Ss, Stack, T, Ts, Tzr);
-yeccpars2(6 = S, Cat, Ss, Stack, T, Ts, Tzr) ->
-    yeccpars2_6(S, Cat, Ss, Stack, T, Ts, Tzr);
-yeccpars2(7 = S, Cat, Ss, Stack, T, Ts, Tzr) ->
-    yeccpars2_7(S, Cat, Ss, Stack, T, Ts, Tzr);
-yeccpars2(8 = S, Cat, Ss, Stack, T, Ts, Tzr) ->
-    yeccpars2_8(S, Cat, Ss, Stack, T, Ts, Tzr);
+yeccpars2(5=S, Cat, Ss, Stack, T, Ts, Tzr) ->
+ yeccpars2_5(S, Cat, Ss, Stack, T, Ts, Tzr);
+yeccpars2(6=S, Cat, Ss, Stack, T, Ts, Tzr) ->
+ yeccpars2_6(S, Cat, Ss, Stack, T, Ts, Tzr);
+yeccpars2(7=S, Cat, Ss, Stack, T, Ts, Tzr) ->
+ yeccpars2_7(S, Cat, Ss, Stack, T, Ts, Tzr);
+yeccpars2(8=S, Cat, Ss, Stack, T, Ts, Tzr) ->
+ yeccpars2_8(S, Cat, Ss, Stack, T, Ts, Tzr);
 %% yeccpars2(9=S, Cat, Ss, Stack, T, Ts, Tzr) ->
 %%  yeccpars2_9(S, Cat, Ss, Stack, T, Ts, Tzr);
-yeccpars2(10 = S, Cat, Ss, Stack, T, Ts, Tzr) ->
-    yeccpars2_10(S, Cat, Ss, Stack, T, Ts, Tzr);
-yeccpars2(11 = S, Cat, Ss, Stack, T, Ts, Tzr) ->
-    yeccpars2_11(S, Cat, Ss, Stack, T, Ts, Tzr);
-yeccpars2(12 = S, Cat, Ss, Stack, T, Ts, Tzr) ->
-    yeccpars2_12(S, Cat, Ss, Stack, T, Ts, Tzr);
-yeccpars2(13 = S, Cat, Ss, Stack, T, Ts, Tzr) ->
-    yeccpars2_8(S, Cat, Ss, Stack, T, Ts, Tzr);
+yeccpars2(10=S, Cat, Ss, Stack, T, Ts, Tzr) ->
+ yeccpars2_10(S, Cat, Ss, Stack, T, Ts, Tzr);
+yeccpars2(11=S, Cat, Ss, Stack, T, Ts, Tzr) ->
+ yeccpars2_11(S, Cat, Ss, Stack, T, Ts, Tzr);
+yeccpars2(12=S, Cat, Ss, Stack, T, Ts, Tzr) ->
+ yeccpars2_12(S, Cat, Ss, Stack, T, Ts, Tzr);
+yeccpars2(13=S, Cat, Ss, Stack, T, Ts, Tzr) ->
+ yeccpars2_8(S, Cat, Ss, Stack, T, Ts, Tzr);
 %% yeccpars2(14=S, Cat, Ss, Stack, T, Ts, Tzr) ->
 %%  yeccpars2_14(S, Cat, Ss, Stack, T, Ts, Tzr);
-yeccpars2(15 = S, Cat, Ss, Stack, T, Ts, Tzr) ->
-    yeccpars2_15(S, Cat, Ss, Stack, T, Ts, Tzr);
+yeccpars2(15=S, Cat, Ss, Stack, T, Ts, Tzr) ->
+ yeccpars2_15(S, Cat, Ss, Stack, T, Ts, Tzr);
 yeccpars2(Other, _, _, _, _, _, _) ->
-    erlang:error({yecc_bug, "1.4", {missing_state_in_action_table, Other}}).
+ erlang:error({yecc_bug,"1.4",{missing_state_in_action_table, Other}}).
 
 -dialyzer({nowarn_function, yeccpars2_0/7}).
--compile({nowarn_unused_function, yeccpars2_0/7}).
+-compile({nowarn_unused_function,  yeccpars2_0/7}).
 yeccpars2_0(S, 'weekday', Ss, Stack, T, Ts, Tzr) ->
-    yeccpars1(S, 5, Ss, Stack, T, Ts, Tzr);
+ yeccpars1(S, 5, Ss, Stack, T, Ts, Tzr);
 yeccpars2_0(_, _, _, _, T, _, _) ->
-    yeccerror(T).
+ yeccerror(T).
 
 -dialyzer({nowarn_function, yeccpars2_1/7}).
--compile({nowarn_unused_function, yeccpars2_1/7}).
+-compile({nowarn_unused_function,  yeccpars2_1/7}).
 yeccpars2_1(_S, Cat, Ss, Stack, T, Ts, Tzr) ->
-    NewStack = yeccpars2_1_(Stack),
-    yeccgoto_active_day(hd(Ss), Cat, Ss, NewStack, T, Ts, Tzr).
+ NewStack = yeccpars2_1_(Stack),
+ yeccgoto_active_day(hd(Ss), Cat, Ss, NewStack, T, Ts, Tzr).
 
 -dialyzer({nowarn_function, yeccpars2_2/7}).
--compile({nowarn_unused_function, yeccpars2_2/7}).
+-compile({nowarn_unused_function,  yeccpars2_2/7}).
 yeccpars2_2(_S, Cat, Ss, Stack, T, Ts, Tzr) ->
-    NewStack = yeccpars2_2_(Stack),
-    yeccgoto_active_day(hd(Ss), Cat, Ss, NewStack, T, Ts, Tzr).
+ NewStack = yeccpars2_2_(Stack),
+ yeccgoto_active_day(hd(Ss), Cat, Ss, NewStack, T, Ts, Tzr).
 
 -dialyzer({nowarn_function, yeccpars2_3/7}).
--compile({nowarn_unused_function, yeccpars2_3/7}).
+-compile({nowarn_unused_function,  yeccpars2_3/7}).
 yeccpars2_3(S, '[', Ss, Stack, T, Ts, Tzr) ->
-    yeccpars1(S, 8, Ss, Stack, T, Ts, Tzr);
+ yeccpars1(S, 8, Ss, Stack, T, Ts, Tzr);
 yeccpars2_3(_, _, _, _, T, _, _) ->
-    yeccerror(T).
+ yeccerror(T).
 
 -dialyzer({nowarn_function, yeccpars2_4/7}).
--compile({nowarn_unused_function, yeccpars2_4/7}).
+-compile({nowarn_unused_function,  yeccpars2_4/7}).
 yeccpars2_4(_S, '$end', _Ss, Stack, _T, _Ts, _Tzr) ->
-    {ok, hd(Stack)};
+ {ok, hd(Stack)};
 yeccpars2_4(_, _, _, _, T, _, _) ->
-    yeccerror(T).
+ yeccerror(T).
 
 -dialyzer({nowarn_function, yeccpars2_5/7}).
--compile({nowarn_unused_function, yeccpars2_5/7}).
+-compile({nowarn_unused_function,  yeccpars2_5/7}).
 yeccpars2_5(S, '-', Ss, Stack, T, Ts, Tzr) ->
-    yeccpars1(S, 6, Ss, Stack, T, Ts, Tzr);
+ yeccpars1(S, 6, Ss, Stack, T, Ts, Tzr);
 yeccpars2_5(_S, Cat, Ss, Stack, T, Ts, Tzr) ->
-    NewStack = yeccpars2_5_(Stack),
-    yeccgoto_single_day(hd(Ss), Cat, Ss, NewStack, T, Ts, Tzr).
+ NewStack = yeccpars2_5_(Stack),
+ yeccgoto_single_day(hd(Ss), Cat, Ss, NewStack, T, Ts, Tzr).
 
 -dialyzer({nowarn_function, yeccpars2_6/7}).
--compile({nowarn_unused_function, yeccpars2_6/7}).
+-compile({nowarn_unused_function,  yeccpars2_6/7}).
 yeccpars2_6(S, 'weekday', Ss, Stack, T, Ts, Tzr) ->
-    yeccpars1(S, 7, Ss, Stack, T, Ts, Tzr);
+ yeccpars1(S, 7, Ss, Stack, T, Ts, Tzr);
 yeccpars2_6(_, _, _, _, T, _, _) ->
-    yeccerror(T).
+ yeccerror(T).
 
 -dialyzer({nowarn_function, yeccpars2_7/7}).
--compile({nowarn_unused_function, yeccpars2_7/7}).
+-compile({nowarn_unused_function,  yeccpars2_7/7}).
 yeccpars2_7(_S, Cat, Ss, Stack, T, Ts, Tzr) ->
-    [_, _ | Nss] = Ss,
-    NewStack = yeccpars2_7_(Stack),
-    yeccgoto_day_range(hd(Nss), Cat, Nss, NewStack, T, Ts, Tzr).
+ [_,_|Nss] = Ss,
+ NewStack = yeccpars2_7_(Stack),
+ yeccgoto_day_range(hd(Nss), Cat, Nss, NewStack, T, Ts, Tzr).
 
 -dialyzer({nowarn_function, yeccpars2_8/7}).
--compile({nowarn_unused_function, yeccpars2_8/7}).
+-compile({nowarn_unused_function,  yeccpars2_8/7}).
 yeccpars2_8(S, 'time', Ss, Stack, T, Ts, Tzr) ->
-    yeccpars1(S, 10, Ss, Stack, T, Ts, Tzr);
+ yeccpars1(S, 10, Ss, Stack, T, Ts, Tzr);
 yeccpars2_8(_, _, _, _, T, _, _) ->
-    yeccerror(T).
+ yeccerror(T).
 
 -dialyzer({nowarn_function, yeccpars2_9/7}).
--compile({nowarn_unused_function, yeccpars2_9/7}).
+-compile({nowarn_unused_function,  yeccpars2_9/7}).
 yeccpars2_9(S, '-', Ss, Stack, T, Ts, Tzr) ->
-    yeccpars1(S, 13, Ss, Stack, T, Ts, Tzr);
+ yeccpars1(S, 13, Ss, Stack, T, Ts, Tzr);
 yeccpars2_9(_, _, _, _, T, _, _) ->
-    yeccerror(T).
+ yeccerror(T).
 
 -dialyzer({nowarn_function, yeccpars2_10/7}).
--compile({nowarn_unused_function, yeccpars2_10/7}).
+-compile({nowarn_unused_function,  yeccpars2_10/7}).
 yeccpars2_10(S, 'time_delimiter', Ss, Stack, T, Ts, Tzr) ->
-    yeccpars1(S, 11, Ss, Stack, T, Ts, Tzr);
+ yeccpars1(S, 11, Ss, Stack, T, Ts, Tzr);
 yeccpars2_10(_, _, _, _, T, _, _) ->
-    yeccerror(T).
+ yeccerror(T).
 
 -dialyzer({nowarn_function, yeccpars2_11/7}).
--compile({nowarn_unused_function, yeccpars2_11/7}).
+-compile({nowarn_unused_function,  yeccpars2_11/7}).
 yeccpars2_11(S, 'time', Ss, Stack, T, Ts, Tzr) ->
-    yeccpars1(S, 12, Ss, Stack, T, Ts, Tzr);
+ yeccpars1(S, 12, Ss, Stack, T, Ts, Tzr);
 yeccpars2_11(_, _, _, _, T, _, _) ->
-    yeccerror(T).
+ yeccerror(T).
 
 -dialyzer({nowarn_function, yeccpars2_12/7}).
--compile({nowarn_unused_function, yeccpars2_12/7}).
+-compile({nowarn_unused_function,  yeccpars2_12/7}).
 yeccpars2_12(_S, Cat, Ss, Stack, T, Ts, Tzr) ->
-    [_, _ | Nss] = Ss,
-    NewStack = yeccpars2_12_(Stack),
-    yeccgoto_active_time(hd(Nss), Cat, Nss, NewStack, T, Ts, Tzr).
+ [_,_|Nss] = Ss,
+ NewStack = yeccpars2_12_(Stack),
+ yeccgoto_active_time(hd(Nss), Cat, Nss, NewStack, T, Ts, Tzr).
 
 %% yeccpars2_13: see yeccpars2_8
 
 -dialyzer({nowarn_function, yeccpars2_14/7}).
--compile({nowarn_unused_function, yeccpars2_14/7}).
+-compile({nowarn_unused_function,  yeccpars2_14/7}).
 yeccpars2_14(S, ']', Ss, Stack, T, Ts, Tzr) ->
-    yeccpars1(S, 15, Ss, Stack, T, Ts, Tzr);
+ yeccpars1(S, 15, Ss, Stack, T, Ts, Tzr);
 yeccpars2_14(_, _, _, _, T, _, _) ->
-    yeccerror(T).
+ yeccerror(T).
 
 -dialyzer({nowarn_function, yeccpars2_15/7}).
--compile({nowarn_unused_function, yeccpars2_15/7}).
+-compile({nowarn_unused_function,  yeccpars2_15/7}).
 yeccpars2_15(_S, Cat, Ss, Stack, T, Ts, Tzr) ->
-    [_, _, _, _, _ | Nss] = Ss,
-    NewStack = yeccpars2_15_(Stack),
-    yeccgoto_T(hd(Nss), Cat, Nss, NewStack, T, Ts, Tzr).
+ [_,_,_,_,_|Nss] = Ss,
+ NewStack = yeccpars2_15_(Stack),
+ yeccgoto_T(hd(Nss), Cat, Nss, NewStack, T, Ts, Tzr).
 
 -dialyzer({nowarn_function, yeccgoto_T/7}).
--compile({nowarn_unused_function, yeccgoto_T/7}).
+-compile({nowarn_unused_function,  yeccgoto_T/7}).
 yeccgoto_T(0, Cat, Ss, Stack, T, Ts, Tzr) ->
-    yeccpars2_4(4, Cat, Ss, Stack, T, Ts, Tzr).
+ yeccpars2_4(4, Cat, Ss, Stack, T, Ts, Tzr).
 
 -dialyzer({nowarn_function, yeccgoto_active_day/7}).
--compile({nowarn_unused_function, yeccgoto_active_day/7}).
+-compile({nowarn_unused_function,  yeccgoto_active_day/7}).
 yeccgoto_active_day(0, Cat, Ss, Stack, T, Ts, Tzr) ->
-    yeccpars2_3(3, Cat, Ss, Stack, T, Ts, Tzr).
+ yeccpars2_3(3, Cat, Ss, Stack, T, Ts, Tzr).
 
 -dialyzer({nowarn_function, yeccgoto_active_time/7}).
--compile({nowarn_unused_function, yeccgoto_active_time/7}).
+-compile({nowarn_unused_function,  yeccgoto_active_time/7}).
 yeccgoto_active_time(8, Cat, Ss, Stack, T, Ts, Tzr) ->
-    yeccpars2_9(9, Cat, Ss, Stack, T, Ts, Tzr);
+ yeccpars2_9(9, Cat, Ss, Stack, T, Ts, Tzr);
 yeccgoto_active_time(13, Cat, Ss, Stack, T, Ts, Tzr) ->
-    yeccpars2_14(14, Cat, Ss, Stack, T, Ts, Tzr).
+ yeccpars2_14(14, Cat, Ss, Stack, T, Ts, Tzr).
 
 -dialyzer({nowarn_function, yeccgoto_day_range/7}).
--compile({nowarn_unused_function, yeccgoto_day_range/7}).
-yeccgoto_day_range(0 = _S, Cat, Ss, Stack, T, Ts, Tzr) ->
-    yeccpars2_2(_S, Cat, Ss, Stack, T, Ts, Tzr).
+-compile({nowarn_unused_function,  yeccgoto_day_range/7}).
+yeccgoto_day_range(0=_S, Cat, Ss, Stack, T, Ts, Tzr) ->
+ yeccpars2_2(_S, Cat, Ss, Stack, T, Ts, Tzr).
 
 -dialyzer({nowarn_function, yeccgoto_single_day/7}).
--compile({nowarn_unused_function, yeccgoto_single_day/7}).
-yeccgoto_single_day(0 = _S, Cat, Ss, Stack, T, Ts, Tzr) ->
-    yeccpars2_1(_S, Cat, Ss, Stack, T, Ts, Tzr).
+-compile({nowarn_unused_function,  yeccgoto_single_day/7}).
+yeccgoto_single_day(0=_S, Cat, Ss, Stack, T, Ts, Tzr) ->
+ yeccpars2_1(_S, Cat, Ss, Stack, T, Ts, Tzr).
 
--compile({inline, yeccpars2_1_/1}).
+-compile({inline,yeccpars2_1_/1}).
 -dialyzer({nowarn_function, yeccpars2_1_/1}).
--compile({nowarn_unused_function, yeccpars2_1_/1}).
+-compile({nowarn_unused_function,  yeccpars2_1_/1}).
 -file("/home/bnjm/dev/erlang/arbeitsinspektor/apps/aicore/src/aicore_bhd_parser.yrl", 8).
 yeccpars2_1_(__Stack0) ->
-    [___1 | __Stack] = __Stack0,
-    [
-        begin
-            {day_single, day_value_of(___1)}
-        end
-        | __Stack
-    ].
+ [___1 | __Stack] = __Stack0,
+ [begin
+                           {day_single, day_value_of(___1)}
+  end | __Stack].
 
--compile({inline, yeccpars2_2_/1}).
+-compile({inline,yeccpars2_2_/1}).
 -dialyzer({nowarn_function, yeccpars2_2_/1}).
--compile({nowarn_unused_function, yeccpars2_2_/1}).
+-compile({nowarn_unused_function,  yeccpars2_2_/1}).
 -file("/home/bnjm/dev/erlang/arbeitsinspektor/apps/aicore/src/aicore_bhd_parser.yrl", 7).
 yeccpars2_2_(__Stack0) ->
-    [___1 | __Stack] = __Stack0,
-    [
-        begin
-            ___1
-        end
-        | __Stack
-    ].
+ [___1 | __Stack] = __Stack0,
+ [begin
+                          ___1
+  end | __Stack].
 
--compile({inline, yeccpars2_5_/1}).
+-compile({inline,yeccpars2_5_/1}).
 -dialyzer({nowarn_function, yeccpars2_5_/1}).
--compile({nowarn_unused_function, yeccpars2_5_/1}).
+-compile({nowarn_unused_function,  yeccpars2_5_/1}).
 -file("/home/bnjm/dev/erlang/arbeitsinspektor/apps/aicore/src/aicore_bhd_parser.yrl", 10).
 yeccpars2_5_(__Stack0) ->
-    [___1 | __Stack] = __Stack0,
-    [
-        begin
-            ___1
-        end
-        | __Stack
-    ].
+ [___1 | __Stack] = __Stack0,
+ [begin
+                        ___1
+  end | __Stack].
 
--compile({inline, yeccpars2_7_/1}).
+-compile({inline,yeccpars2_7_/1}).
 -dialyzer({nowarn_function, yeccpars2_7_/1}).
--compile({nowarn_unused_function, yeccpars2_7_/1}).
+-compile({nowarn_unused_function,  yeccpars2_7_/1}).
 -file("/home/bnjm/dev/erlang/arbeitsinspektor/apps/aicore/src/aicore_bhd_parser.yrl", 9).
 yeccpars2_7_(__Stack0) ->
-    [___3, ___2, ___1 | __Stack] = __Stack0,
-    [
-        begin
-            {day_range, {day_value_of(___1), day_value_of(___3)}}
-        end
-        | __Stack
-    ].
+ [___3,___2,___1 | __Stack] = __Stack0,
+ [begin
+                                   {day_range, {day_value_of(___1), day_value_of(___3)}}
+  end | __Stack].
 
--compile({inline, yeccpars2_12_/1}).
+-compile({inline,yeccpars2_12_/1}).
 -dialyzer({nowarn_function, yeccpars2_12_/1}).
--compile({nowarn_unused_function, yeccpars2_12_/1}).
+-compile({nowarn_unused_function,  yeccpars2_12_/1}).
 -file("/home/bnjm/dev/erlang/arbeitsinspektor/apps/aicore/src/aicore_bhd_parser.yrl", 11).
 yeccpars2_12_(__Stack0) ->
-    [___3, ___2, ___1 | __Stack] = __Stack0,
-    [
-        begin
-            {int_value_of(___1), int_value_of(___3), 00}
-        end
-        | __Stack
-    ].
+ [___3,___2,___1 | __Stack] = __Stack0,
+ [begin
+                                          {int_value_of(___1), int_value_of(___3), 00}
+  end | __Stack].
 
--compile({inline, yeccpars2_15_/1}).
+-compile({inline,yeccpars2_15_/1}).
 -dialyzer({nowarn_function, yeccpars2_15_/1}).
--compile({nowarn_unused_function, yeccpars2_15_/1}).
+-compile({nowarn_unused_function,  yeccpars2_15_/1}).
 -file("/home/bnjm/dev/erlang/arbeitsinspektor/apps/aicore/src/aicore_bhd_parser.yrl", 6).
 yeccpars2_15_(__Stack0) ->
-    [___6, ___5, ___4, ___3, ___2, ___1 | __Stack] = __Stack0,
-    [
-        begin
-            as_map([___1, {from_time, ___3}, {to_time, ___5}])
-        end
-        | __Stack
-    ].
+ [___6,___5,___4,___3,___2,___1 | __Stack] = __Stack0,
+ [begin
+                                                      as_map([___1, {from_time, ___3}, {to_time, ___5}])
+  end | __Stack].
+
 
 -file("/home/bnjm/dev/erlang/arbeitsinspektor/apps/aicore/src/aicore_bhd_parser.yrl", 37).

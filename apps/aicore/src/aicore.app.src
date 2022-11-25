@@ -5,7 +5,8 @@
   {mod, {aicore_app, []}},
   {applications,
    [kernel,
-    stdlib
+    stdlib,
+    kuberlnetes
    ]},
   {env,[]},
   {modules, []},

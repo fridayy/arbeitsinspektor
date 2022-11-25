@@ -1,0 +1,9 @@
+apiVersion: "arbeitsinspektor.ghcr.io/v1"
+kind: BusinessHour
+metadata:
+  name: businesshours
+spec:
+  definitions:
+    - definition: "mon-sun[08:00-22:00]"
+      label:
+        env: "development"
