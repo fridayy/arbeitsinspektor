@@ -1,5 +1,7 @@
 [
-  {arbeitsinspektor, []},
+  {aicore, [
+    {dry_run, "${DRY_RUN:-false}"}
+  ]},
   {kernel,
     %% logging
     [

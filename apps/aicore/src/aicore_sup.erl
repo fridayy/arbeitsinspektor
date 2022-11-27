@@ -29,9 +29,22 @@ init([]) ->
     SupFlags = #{
         strategy => one_for_all,
         intensity => 0,
-        period => 1
+        period => 1,
+        %% usually auto shutdown should not be used on a top supervisor
+        %% however for this application it is acually desired to
+        %% terminate the top supervisor and the application if the 
+        %% worker terminates
+        auto_shutdown => any_significant
     },
-    ChildSpecs = [],
+    ChildSpecs = [
+        #{
+            id => aicore_runner,
+            start => {aicore_runner, start_link, []},
+            restart => temporary,
+            type => worker,
+            significant => true
+        }
+    ],
     {ok, {SupFlags, ChildSpecs}}.
 
 %% internal functions
