@@ -20,4 +20,24 @@ rules:
   verbs:
     - create
     - patch
+- apiGroups:
+    - "arbeitsinspektor.ghcr.io"
+  resources:
+    - businesshours
+  verbs:
+    - list
+    - get
+- apiGroups:
+    - "apps"
+  resources:
+    - deployments
+  verbs:
+    - list
+    - get
+- apiGroups:
+    - "apps"
+  resources:
+    - "deployments/scale"
+  verbs:
+    - patch
 {{- end -}}
