@@ -4,7 +4,7 @@
 %%%=============================================================================
 -module(aicore).
 
--export([analyze/0]).
+-export([run_actions/0]).
 
 -type recommendation() ::
     {ok, no_action_required} | {ok, {scale, 0}} | {ok, scale, 1} | {error, {unknown, any()}}.
@@ -16,7 +16,7 @@
     business_hours :: binary()
 }).
 
-analyze() ->
+run_actions() ->
     BusinessHourDefinitions = aicore_kubernetes:business_hours_definitions(),
     warn_if_no_definitions(BusinessHourDefinitions),
     Recommendations = lists:flatmap(
@@ -107,7 +107,6 @@ follow_recommendation(#recommendation{
 
 is_dry_run() ->
     X = application:get_env(aicore, dry_run),
-    logger:info("DRY RUN = ~p", [X]),
     case X of
         undefined -> false;
         {ok, "true"} -> true;

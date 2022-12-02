@@ -18,7 +18,7 @@ init(_) ->
 %% runs the cluster analysis
 handle_continue(run, State) ->
     logger:info("Running cluster analysis"),
-    aicore:analyze(),
+    aicore:run_actions(),
     {noreply, State}.
 
 %% unused
