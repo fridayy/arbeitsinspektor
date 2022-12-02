@@ -9,3 +9,5 @@ eunit:
 
 compile:
 	rebar3 compile
+
+build: compile eunit
