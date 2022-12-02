@@ -18,7 +18,7 @@ jobs:
       - name: Install prerequisites
         run: |
           apt-get update
-          apt-get install make git
+          apt-get install -y make git
       - uses: actions/checkout@v3
       - name: Build and Test
         run: make build
