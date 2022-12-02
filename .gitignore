@@ -18,3 +18,7 @@ _build
 rebar3.crashdump
 *~
 *.tgz
+
+# ignore generated files
+apps/aicore/src/aicore_bhd_lexer.erl
+apps/aicore/src/aicore_bhd_parser.erl
