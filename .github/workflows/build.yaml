@@ -19,6 +19,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install make
+      - uses: actions/checkout@v3
       - name: Build and Test
-        uses: actions/checkout@v3
         run: make build
