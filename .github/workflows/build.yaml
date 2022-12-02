@@ -15,6 +15,10 @@ jobs:
     container:
       image: erlang:25-slim
     steps:
-      - uses: actions/checkout@v3
+      - name: Install prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install make
       - name: Build and Test
+        uses: actions/checkout@v3
         run: make build
