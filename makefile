@@ -11,3 +11,6 @@ compile:
 	rebar3 compile
 
 build: compile eunit
+
+release: 
+	./bin/release.sh
