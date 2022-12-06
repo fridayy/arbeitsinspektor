@@ -20,4 +20,12 @@ spec:
           - name: {{ .Chart.Name }}
             image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
             imagePullPolicy: {{ .Values.image.pullPolicy }}
+            env:
+            {{- range $key, $_val := .Values.app.config }}
+              - name: {{ $key }}
+                valueFrom:
+                  configMapKeyRef:
+                    name: {{ $.Values.configMapName }}
+                    key: {{ $key }}
+            {{- end }}
       backoffLimit: 0

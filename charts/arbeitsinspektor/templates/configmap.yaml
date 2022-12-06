@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.configMapName }}
+  labels:
+  {{- include "arbeitsinspektor.labels" . | nindent 4 }}
+data:
+  # Dynamic config
+  {{- range $key, $val := .Values.app.config }}
+  {{ $key }}: {{ $val | quote }}
+  {{- end }}
+
