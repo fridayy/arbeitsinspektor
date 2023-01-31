@@ -2,7 +2,7 @@
 %%% @author bnjm
 %%% @copyright (C) 2023, leftshift.one software gmbh
 %%% @doc
-%%% 
+%%%
 %%% @end
 %%% Created : 30. Jan 2023
 %%%-------------------------------------------------------------------
@@ -35,7 +35,6 @@ get_env(Key) ->
         undefined -> error({not_set, Key});
         Else -> Else
     end.
-
 
 %% @doc
 %% Ensures the returned result is transformed into the given datatype.

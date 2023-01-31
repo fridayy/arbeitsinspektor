@@ -23,7 +23,7 @@ init([]) ->
         period => 1,
         %% usually auto shutdown should not be used on a top supervisor
         %% however for this application it is acually desired to
-        %% terminate the top supervisor and the application if the 
+        %% terminate the top supervisor and the application if the
         %% worker terminates
         auto_shutdown => any_significant
     },
