@@ -9,92 +9,98 @@
 %%%=============================================================================
 -module(aicore_kubernetes).
 
--export([business_hours_definitions/0, name/1, namespace/1, scale/3]).
+-export([business_hours_definitions/0, get_scale_targets/1, scale/1]).
 
-%% represents a resource that is controlled by arbeitsinspektor
-%% controlled in this context means that the resource has a label
-%% that is defined in the business hours custom resource object.
--type managed_resource() :: #{
-    %% the metadata.name of the resource
-    name => binary(),
-    %% the metadata.namespace of the resource
-    namespace => binary(),
-    %% current replicas
-    current_replicas => non_neg_integer()
-}.
--type business_hour_defintion() :: #{
-    business_hours => binary(),
-    managed_resources => list(managed_resource())
-}.
-
--export_type([business_hour_defintion/0, managed_resource/0]).
-
+-include_lib("kernel/include/logger.hrl").
 -define(TABLE, aicore_kubenertes_server_config).
+-define(LAST_REPLICAS_ANNOTATION_KEY, <<"arbeitsinspektor.ghcr.io/last-replicas">>).
 
 %% @doc
 %% Returns a list of all managed resources - meaning resources that contain
 %% arbeitsinspektor related annotations
 %% @end
--spec business_hours_definitions() -> list(business_hour_defintion()).
+-spec business_hours_definitions() -> list(aicore:bhd()).
 business_hours_definitions() ->
     BusinessHourDefinitions = kuberlnetes:get(
         "/apis/arbeitsinspektor.ghcr.io/v1/businesshours?limit=1", #{server => load_server_config()}
     ),
-    %% there should only be only bhd object limited by resource quotas
-    [#{<<"spec">> := #{<<"definitions">> := Definitions}} | _] = items(BusinessHourDefinitions),
-    lists:map(
-        fun(#{<<"definition">> := D, <<"label">> := L}) ->
-            MatchingDeployments = deployments(L),
-            ManagedResources = lists:map(fun deployment_to_managed_resource/1, MatchingDeployments),
-            #{business_hours => D, managed_resources => ManagedResources}
-        end,
-        Definitions
-    ).
+    %% there should only be only bhd object (limited by resource quotas)
+    case items(BusinessHourDefinitions) of
+        [] -> 
+            ?LOG_ERROR(#{error => no_business_hour_definition, message => "There is no business hour definiton custom resource in this cluster"}),
+            error(no_business_hour_definition);
+        [#{<<"spec">> := #{<<"definitions">> := Definitions}} | _] ->
+          lists:map(
+                     fun(#{<<"definition">> := D, <<"label">> := L}) ->
+                             aicore:bhd(erlang:binary_to_list(D), L)
+                     end,
+                     Definitions)
+    end.
 
-%% path: /apis/apps/v1/namespaces/{namespace}/deployments/{deploymentName}/scale
-%% Request Body: {"spec":{"replicas":0}}
--spec scale(Name, Namespace, ScaleTo) -> ok | {error, Reason} when
-    Name :: binary(),
-    Namespace :: binary(),
-    ScaleTo :: pos_integer(),
-    Reason :: term().
-scale(Name, Namespace, ScaleTo) when ScaleTo >= 0 ->
-    Path = io_lib:format("/apis/apps/v1/namespaces/~s/deployments/~s/scale", [Namespace, Name]),
-    logger:debug("PATCH Scale v1 ('~s')", [Path]),
-    kuberlnetes:patch(
-        #{
-            path => Path,
-            body => #{
-                <<"spec">> => #{<<"replicas">> => ScaleTo},
-                <<"metadata">> => #{<<"annotations">> => #{<<"hui">> => <<"buh">>}}
-            }
-        },
-        #{server => load_server_config()}
-    ).
+-spec get_scale_targets(Labels) -> Result when
+      Labels :: map(),
+      Result :: list(aicore:scale_target()).
+get_scale_targets(Labels) ->
+    ?LOG_DEBUG(#{action => get_scale_targets, labels => Labels}),
+    Deployments = list_deployments(Labels),
+    ?LOG_DEBUG(#{action => got_scale_targets, type => deployment, count => length(Deployments)}),
+    lists:map(fun(Deployment) -> app_v1_resource_to_scale_target(Deployment, deployment) end, Deployments).
 
-name(#{name := Name}) -> Name.
-namespace(#{namespace := Namespace}) -> Namespace.
+
+-spec scale(list(aicore:scale_target())) -> ok.
+scale(ScaleTargets) ->
+    lists:map(fun(ScaleTarget) -> 
+                      scale_resource(
+                        aicore:kind(ScaleTarget),
+                        aicore:name(ScaleTarget),
+                        aicore:namespace(ScaleTarget),
+                        aicore:desired_replicas(ScaleTarget)
+                       )
+              end, ScaleTargets),
+    ok.
 
 %% internal
 load_server_config() ->
     case ets:info(?TABLE) of
         undefined ->
             ets:new(?TABLE, [set, private, named_table]),
-            ServerConfig = kuberlnetes:in_cluster(),
+            % ServerConfig = kuberlnetes:in_cluster(),
+            ServerConfig = kuberlnetes:from_config(#{
+                                                     context => "bnjm-test"
+                                                    }),
             ets:insert(?TABLE, {ServerConfig}),
             ServerConfig;
         _ ->
             ets:first(?TABLE)
     end.
 
-%% '/apis/apps/v1/deployments?labelSelector=env%3Ddevelopment&limit=500'
-deployments(Labels) when map_size(Labels) =:= 0 -> [];
-deployments(Labels) ->
+scale_resource(Resource, Name, Namespace, ScaleTo) when ScaleTo >= 0 ->
+    Path = io_lib:format("/apis/apps/v1/namespaces/~s/~ss/~s/scale", [Namespace, Resource, Name]),
+    ?LOG_DEBUG(#{method => "patch", path => Path, scale_to => ScaleTo}),
+    kuberlnetes:patch(
+        #{
+            path => Path,
+            body => #{
+                <<"spec">> => #{<<"replicas">> => ScaleTo}
+            }
+        },
+        #{server => load_server_config()}
+    ).
+
+list_deployments(Labels) ->
+    list_app_v1_by_label("deployments", Labels).
+
+list_stateful_sets(Labels) ->
+    list_app_v1_by_label("statefulsets", Labels).
+
+list_app_v1_by_label(Resource, Labels) when is_list(Resource) andalso is_map(Labels) andalso map_size(Labels) =:= 0 -> [];
+list_app_v1_by_label(Resource, Labels) when is_list(Resource) andalso is_map(Labels) ->
     LabelSelectorStr = to_label_selector(Labels),
-    Path = io_lib:format("/apis/apps/v1/deployments?labelSelector=~s", [LabelSelectorStr]),
-    logger:debug("GET DeploymentList ('~s')", [Path]),
+    Path = io_lib:format("/apis/apps/v1/~s?labelSelector=~s", [Resource, LabelSelectorStr]),
+    ?LOG_DEBUG(#{method => "get", path => Path}),
     DeploymentList = kuberlnetes:get(Path, #{server => load_server_config()}),
     items(DeploymentList).
+
 
 to_label_selector(Labels) ->
     S = lists:foldl(
@@ -109,13 +115,21 @@ to_label_selector(Labels) ->
     %% remove the trailing comma
     string:trim(S, trailing, ",").
 
-deployment_to_managed_resource(#{
+app_v1_resource_to_scale_target(#{
     <<"metadata">> := #{
         <<"name">> := Name,
-        <<"namespace">> := Namespace
+        <<"namespace">> := Namespace,
+        <<"annotations">> := Annotations
     },
-    <<"spec">> := #{<<"replicas">> := Replicas}
-}) ->
-    #{name => Name, namespace => Namespace, current_replicas => Replicas}.
+    <<"spec">> := #{<<"replicas">> := CurrentReplicas}
+}, Type) -> 
+    DesiredReplicas = maps:get(?LAST_REPLICAS_ANNOTATION_KEY, Annotations, undefined),
+    case Type of
+        deployment -> aicore:deployment(Name, Namespace, CurrentReplicas, DesiredReplicas);
+        statefulset -> aicore:stateful_set(Name, Namespace, CurrentReplicas, DesiredReplicas);
+        _ ->
+            ?LOG_ERROR(#{error => unsupported_resource_type, type => Type}),
+            error(unsupported_type)
+    end.
 
 items(#{<<"items">> := Items}) -> Items.

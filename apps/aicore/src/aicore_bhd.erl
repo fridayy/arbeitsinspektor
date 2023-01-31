@@ -18,6 +18,8 @@
 
 -export([match/1]).
 
+-include_lib("kernel/include/logger.hrl").
+
 %% @doc
 %% Checks if the current UTC time is within the given business hour definiton.
 %% @end
@@ -30,6 +32,7 @@ match(BusinessHourDefinition) when is_list(BusinessHourDefinition) ->
     {ok, Tokens, _} ?= aicore_bhd_lexer:string(BusinessHourDefinition),
     {ok, R} ?= aicore_bhd_parser:parse(Tokens),
     DateTimeNowUtc = aicore_time:now_utc(),
+    ?LOG_DEBUG(#{event => check_allowance, current_datetime => DateTimeNowUtc, bhd => R}),
     is_allowed(DateTimeNowUtc, R)
    end;
 

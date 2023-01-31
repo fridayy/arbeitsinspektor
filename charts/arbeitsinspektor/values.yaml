@@ -50,7 +50,7 @@ resources:
     cpu: 50m
     memory: 128Mi
 
-## run on spot instance nodes only
+## Alllow to run on azure spot instances by default
 tolerations:
   - key: "kubernetes.azure.com/scalesetpriority"
     operator: "Equal"
@@ -61,4 +61,7 @@ nodeSelector: { }
 affinity: { }
 tolerations: { }
 
-schedule: "*/1 * * * *"
+# Controls the cronjobs schedule aka. how often the arbeitsinspektor job should run
+# default is one an hour
+# schedule: "*/1 * * * *"
+schedule: "0 * * * *"

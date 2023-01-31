@@ -10,7 +10,11 @@ eunit:
 compile:
 	rebar3 compile
 
-build: compile eunit
+build_release:
+	rebar3 as prod release
 
 release: 
 	./bin/release.sh
+
+build: compile eunit
+build_release: build build_release
