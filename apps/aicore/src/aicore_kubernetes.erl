@@ -72,10 +72,7 @@ load_server_config() ->
     case ets:info(?TABLE) of
         undefined ->
             ets:new(?TABLE, [set, private, named_table]),
-            % ServerConfig = kuberlnetes:in_cluster(),
-            ServerConfig = kuberlnetes:from_config(#{
-                context => "bnjm-test"
-            }),
+            ServerConfig = kuberlnetes:in_cluster(),
             ets:insert(?TABLE, {ServerConfig}),
             ServerConfig;
         _ ->
