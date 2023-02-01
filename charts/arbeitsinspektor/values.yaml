@@ -6,7 +6,9 @@
 app:
   config:
     DRY_RUN: "false"
-
+    # sets the log level - possible values 
+    # emergency | alert | critical | error | warning | notice | info | debug
+    LOG_LEVEL: "info"
 
 
 image:

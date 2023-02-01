@@ -5,7 +5,7 @@
   {kernel,
     %% logging
     [
-      {logger_level, info},
+      {logger_level, ${LOG_LEVEL:-info}},
       {logger,
         [{handler, default, logger_std_h,
           #{formatter => {logger_formatter, #{single_line => true}}}}
