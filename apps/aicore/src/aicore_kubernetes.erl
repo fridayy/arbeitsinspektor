@@ -103,21 +103,20 @@ list_app_v1_by_label(Resource, Labels) when
 ->
     [];
 list_app_v1_by_label(Resource, Labels) when is_list(Resource) andalso is_map(Labels) ->
-    LabelSelectorStr = to_label_selector(Labels),
+    LabelSelectorStr = http_uri:encode(to_label_selector(Labels)),
     Path = io_lib:format("/apis/apps/v1/~s?labelSelector=~s", [Resource, LabelSelectorStr]),
     ?LOG_DEBUG(#{method => "get", path => Path}),
     DeploymentList = kuberlnetes:get(Path, #{server => load_server_config()}),
     items(DeploymentList).
 
 to_label_selector(Labels) ->
-    S = lists:foldl(
-        fun({K, V}, Acc) ->
-            %%url encode 'equals (=)'
-            FmtStr = io_lib:format("~s%3D~s,", [K, V]),
+    S = maps:fold(
+        fun(K, V, Acc) ->
+            FmtStr = io_lib:format("~s=~s,", [K, V]),
             lists:merge(Acc, FmtStr)
         end,
         [],
-        maps:to_list(Labels)
+        Labels
     ),
     %% remove the trailing comma
     string:trim(S, trailing, ",").
