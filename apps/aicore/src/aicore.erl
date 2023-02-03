@@ -58,31 +58,16 @@ perform_inspection() ->
 %% @end
 -spec apply_recommendations(Recommendations) -> ok when
     Recommendations :: scale_targets().
+apply_recommendations([]) ->
+    ?LOG_INFO(#{event => scale, message => "no scaling actions required right now"});
 apply_recommendations(Recommendations) ->
+    log_recommendation_actions(Recommendations),
     case aicore_config:get_env_ensure(dry_run, true, boolean) of
         true ->
-            ?LOG_INFO(#{
+            ?LOG_WARNING(#{
                 event => dry_run_active,
                 message => "'dry_run' is enabled - will not perform any actual scaling"
             }),
-            lists:foreach(
-                fun(ScaleTarget) ->
-                    ?LOG_INFO(#{
-                        event => scale,
-                        message => io_lib:format(
-                            "Will scale [~s] '~s' in namespace '~s' from ~p -> ~p",
-                            [
-                                ScaleTarget#scale_target.kind,
-                                ScaleTarget#scale_target.name,
-                                ScaleTarget#scale_target.namespace,
-                                ScaleTarget#scale_target.current_replicas,
-                                ScaleTarget#scale_target.desired_replicas
-                            ]
-                        )
-                    })
-                end,
-                Recommendations
-            ),
             ok;
         false ->
             ?LOG_INFO(#{
@@ -179,3 +164,23 @@ map_target(allowed, #scale_target{current_replicas = 0, desired_replicas = undef
     {true, Y#scale_target{desired_replicas = 1}};
 map_target(allowed, #scale_target{current_replicas = 0, desired_replicas = Desired} = Y) ->
     {true, Y#scale_target{desired_replicas = Desired}}.
+
+log_recommendation_actions(Recommendations) ->
+    lists:foreach(
+        fun(ScaleTarget) ->
+            ?LOG_INFO(#{
+                event => scale,
+                message => io_lib:format(
+                    "Will scale [~s] '~s' in namespace '~s' from ~p -> ~p",
+                    [
+                        ScaleTarget#scale_target.kind,
+                        ScaleTarget#scale_target.name,
+                        ScaleTarget#scale_target.namespace,
+                        ScaleTarget#scale_target.current_replicas,
+                        ScaleTarget#scale_target.desired_replicas
+                    ]
+                )
+            })
+        end,
+        Recommendations
+    ).

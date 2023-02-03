@@ -45,9 +45,9 @@ business_hours_definitions() ->
     Labels :: map(),
     Result :: list(aicore:scale_target()).
 get_scale_targets(Labels) ->
-    ?LOG_DEBUG(#{action => get_scale_targets, labels => Labels}),
+    ?LOG_DEBUG(#{event => get_scale_targets, labels => Labels}),
     Deployments = list_deployments(Labels),
-    ?LOG_DEBUG(#{action => got_scale_targets, type => deployment, count => length(Deployments)}),
+    ?LOG_INFO(#{event => got_scale_targets, type => deployment, count => length(Deployments)}),
     lists:map(
         fun(Deployment) -> app_v1_resource_to_scale_target(Deployment, deployment) end, Deployments
     ).
@@ -72,7 +72,8 @@ load_server_config() ->
     case ets:info(?TABLE) of
         undefined ->
             ets:new(?TABLE, [set, private, named_table]),
-            ServerConfig = kuberlnetes:in_cluster(),
+            % ServerConfig = kuberlnetes:in_cluster(),
+            ServerConfig = kuberlnetes:from_config(#{context => "bnjm-test"}),
             ets:insert(?TABLE, {ServerConfig}),
             ServerConfig;
         _ ->
@@ -103,7 +104,7 @@ list_app_v1_by_label(Resource, Labels) when
 ->
     [];
 list_app_v1_by_label(Resource, Labels) when is_list(Resource) andalso is_map(Labels) ->
-    LabelSelectorStr = http_uri:encode(to_label_selector(Labels)),
+    LabelSelectorStr = uri_string:quote(to_label_selector(Labels)),
     Path = io_lib:format("/apis/apps/v1/~s?labelSelector=~s", [Resource, LabelSelectorStr]),
     ?LOG_DEBUG(#{method => "get", path => Path}),
     DeploymentList = kuberlnetes:get(Path, #{server => load_server_config()}),

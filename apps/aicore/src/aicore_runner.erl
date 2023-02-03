@@ -18,10 +18,11 @@ init(_) ->
     {ok, none, {continue, run}}.
 
 handle_continue(run, State) ->
-    ?LOG_INFO(#{event => running_inspection, message => "Running cluster inspection"}),
+    ?LOG_INFO(#{event => running_inspection, message => "running cluster inspection"}),
     ok = aicore:perform_inspection_and_apply(),
-    ?LOG_INFO(#{event => finished_inspection, message => "We are done here"}),
-    c:q(), % stop the vm in a controlled manner and exit with status code 0
+    ?LOG_INFO(#{event => finished_inspection, message => "we are done here see you next time"}),
+    % stop the vm in a controlled manner and exit with status code 0
+    c:q(),
     {stop, normal, State}.
 
 %% unused
