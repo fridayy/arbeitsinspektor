@@ -8,7 +8,7 @@ COPY . /opt/arbeitsinspektor
 RUN apk add --update git  \
     && rebar3 as prod release
 
-FROM alpine:3.16 as application
+FROM alpine:3.17 as application
 
 RUN apk add --no-cache openssl libstdc++ ncurses-libs && \
     adduser -h /opt/arbeitsinspektor -u 1000 -s /bin/sh -D unprivileged
