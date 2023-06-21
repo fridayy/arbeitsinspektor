@@ -2,6 +2,16 @@ apiVersion: v1
 entries:
   arbeitsinspektor:
   - apiVersion: v2
+    appVersion: 0.0.90
+    created: "2023-06-21T12:08:31.68849181Z"
+    description: A Helm chart for Kubernetes
+    digest: 8e85d17163df2abb462c46038a15862932130d335f32845c87565a287dc1a045
+    name: arbeitsinspektor
+    type: application
+    urls:
+    - https://github.com/fridayy/arbeitsinspektor/releases/download/arbeitsinspektor-0.0.90/arbeitsinspektor-0.0.90.tgz
+    version: 0.0.90
+  - apiVersion: v2
     appVersion: 0.0.9
     created: "2023-06-21T12:07:46.212565758Z"
     description: A Helm chart for Kubernetes
@@ -91,4 +101,4 @@ entries:
     urls:
     - https://github.com/fridayy/arbeitsinspektor/releases/download/arbeitsinspektor-0.0.1/arbeitsinspektor-0.0.1.tgz
     version: 0.0.1
-generated: "2023-06-21T12:07:46.212605059Z"
+generated: "2023-06-21T12:08:31.688690722Z"
