@@ -21,7 +21,7 @@
 %% @end
 -spec business_hours_definitions() -> list(aicore:bhd()).
 business_hours_definitions() ->
-    BusinessHourDefinitions = kuberlnetes:get(
+    {ok, BusinessHourDefinitions} = kuberlnetes:get(
         "/apis/arbeitsinspektor.ghcr.io/v1/businesshours?limit=1", #{server => load_server_config()}
     ),
     %% there should only be only bhd object (limited by resource quotas)
@@ -82,7 +82,7 @@ load_server_config() ->
 scale_resource(Resource, Name, Namespace, ScaleTo) when ScaleTo >= 0 ->
     Path = io_lib:format("/apis/apps/v1/namespaces/~s/~ss/~s/scale", [Namespace, Resource, Name]),
     ?LOG_DEBUG(#{method => "patch", path => Path, scale_to => ScaleTo}),
-    kuberlnetes:patch(
+    {ok, _} = kuberlnetes:patch(
         #{
             path => Path,
             body => #{
@@ -90,7 +90,8 @@ scale_resource(Resource, Name, Namespace, ScaleTo) when ScaleTo >= 0 ->
             }
         },
         #{server => load_server_config()}
-    ).
+    ),
+    ok.
 
 list_deployments(Labels) ->
     list_app_v1_by_label("deployments", Labels).
