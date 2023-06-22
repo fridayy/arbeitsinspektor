@@ -107,7 +107,7 @@ list_app_v1_by_label(Resource, Labels) when is_list(Resource) andalso is_map(Lab
     LabelSelectorStr = uri_string:quote(to_label_selector(Labels)),
     Path = io_lib:format("/apis/apps/v1/~s?labelSelector=~s", [Resource, LabelSelectorStr]),
     ?LOG_DEBUG(#{method => "get", path => Path}),
-    DeploymentList = kuberlnetes:get(Path, #{server => load_server_config()}),
+    {ok, DeploymentList} = kuberlnetes:get(Path, #{server => load_server_config()}),
     items(DeploymentList).
 
 to_label_selector(Labels) ->
